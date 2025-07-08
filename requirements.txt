@@ -1,3 +1,6 @@
 Django>=4.0,<5.0
-solana>=0.30.0,<0.31.0 # Hinzufügen der Solana-Bibliothek
-psycopg2-binary>=2.9.0,<2.10.0 # Für PostgreSQL, oft als Standard, Django braucht einen DB-Adapter bei der Initialisierung auch wenn wir später MySQL nutzen wollen
+solana>=0.30.0,<0.31.0
+psycopg2-binary>=2.9.0,<2.10.0 # Wird für die MySQL-Kompatibilitätsprüfung von Django benötigt, auch wenn Ziel MySQL ist
+mysqlclient>=2.1.0,<2.2.0 # Für MySQL/MariaDB - WICHTIG: Systemabhängigkeiten (mysql-dev/mariadb-dev) müssen für die Installation vorhanden sein!
+gunicorn>=20.0.0,<21.0.0 # WSGI Server für Produktion
+whitenoise[brotli]>=6.0.0,<7.0.0 # Für das Serven von statischen Dateien

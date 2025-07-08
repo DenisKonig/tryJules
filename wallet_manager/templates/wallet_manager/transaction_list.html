@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaktionen für {{ address }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        h1 { color: #0056b3; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background-color: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:hover { background-color: #f1f1f1; }
+        .error { color: red; font-weight: bold; }
+        .success { color: green; }
+        .failed { color: orange; }
+        .signature { font-family: monospace; font-size: 0.9em; }
+        .footer-info { margin-top: 20px; font-size: 0.9em; color: #555; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <h1>Transaktionsübersicht</h1>
+    <p>Wallet-Adresse: <strong>{{ address }}</strong></p>
+    <p class="footer-info">Daten abgerufen von: {{ rpc_endpoint }}</p>
+
+    {% if error_message %}
+        <p class="error">{{ error_message }}</p>
+    {% elif transactions %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Signatur</th>
+                    <th>Zeitpunkt (UTC)</th>
+                    <th>Slot</th>
+                    <th>Gebühr (Lamports)</th>
+                    <th>Status</th>
+                    <th>Beschreibung</th>
+                    <!-- <th>Rohdaten (Debug)</th> -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for tx in transactions %}
+                    <tr>
+                        <td class="signature">
+                            <a href="https://solscan.io/tx/{{ tx.signature }}" target="_blank" title="Auf Solscan ansehen">{{ tx.signature|slice:":10" }}...{{ tx.signature|slice:"-10:" }}</a>
+                        </td>
+                        <td>{{ tx.block_time_readable }}</td>
+                        <td>{{ tx.slot }}</td>
+                        <td>{{ tx.fee_lamports }}</td>
+                        <td class="{{ tx.status|lower }}">{{ tx.status }}</td>
+                        <td>{{ tx.description }}</td>
+                        <!-- <td><pre>{{ tx.raw|pprint }}</pre></td> -->
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Keine Transaktionen für diese Adresse gefunden oder ein Fehler ist aufgetreten.</p>
+    {% endif %}
+
+    <div class="footer-info">
+        <p>Dies ist eine Basisansicht. Zukünftige Versionen werden das Speichern, Kategorisieren und detailliertere Analysen dieser Transaktionen ermöglichen.</p>
+    </div>
+
+</body>
+</html>

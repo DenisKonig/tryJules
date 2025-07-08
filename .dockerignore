@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Python virtual environment
+venv/
+.venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django specific
+*.log
+db.sqlite3
+db.sqlite3-journal
+staticfiles/ # Wird im Dockerfile durch collectstatic erzeugt
+
+# IDE / Editor specific
+.vscode/
+.idea/
+*.swp
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Sonstiges
+*.bak
+*.tmp
+temp/
+tmp/
+local_settings.py # Falls lokale, nicht versionierte Einstellungen verwendet werden
+*.env # Umgebungsvariablen-Dateien sollten nicht ins Image
+media/ # Medien-Dateien, falls vorhanden und nicht über S3 o.ä. gehandhabt

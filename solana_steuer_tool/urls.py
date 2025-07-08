@@ -16,8 +16,9 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include # include hinzugefügt
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path('wallets/', include('wallet_manager.urls', namespace='wallet_manager')), # wallet_manager URLs eingebunden
 ]
