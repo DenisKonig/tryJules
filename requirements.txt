@@ -1,0 +1,3 @@
+Django>=4.0,<5.0
+solana>=0.30.0,<0.31.0 # Hinzufügen der Solana-Bibliothek
+psycopg2-binary>=2.9.0,<2.10.0 # Für PostgreSQL, oft als Standard, Django braucht einen DB-Adapter bei der Initialisierung auch wenn wir später MySQL nutzen wollen
