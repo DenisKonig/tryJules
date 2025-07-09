@@ -130,3 +130,75 @@ Ein Beispiel für eine Nginx-Konfiguration folgt, wenn benötigt.
 
 Diese Anleitung ist eine Basis. Für eine robuste Produktionsumgebung sind weitere Überlegungen notwendig (Logging, Monitoring, Sicherheitshärtung, Backup-Strategien etc.).
 ```
+
+## Bereitstellung auf Raspberry Pi OS (oder anderen ARM-basierten Systemen)
+
+Die `Dockerfile` im Hauptverzeichnis des Projekts ist so angepasst, dass sie auch Docker-Images für ARM-Architekturen, wie sie auf dem Raspberry Pi verwendet werden (z.B. `arm64/v8` oder `arm/v7`), erstellen kann.
+
+### Voraussetzungen
+
+*   Docker auf dem Raspberry Pi installiert und konfiguriert.
+*   Eine externe Datenbank (MySQL/MariaDB oder PostgreSQL), die vom Raspberry Pi aus erreichbar ist, oder eine lokal auf dem Pi installierte Datenbank.
+
+### Bau des Docker-Images auf Raspberry Pi
+
+1.  **Klonen Sie das Repository** auf Ihre Raspberry Pi:
+    ```bash
+    git clone <repository-url>
+    cd <repository-name>
+    ```
+
+2.  **Bauen Sie das Docker-Image:**
+    Führen Sie im Hauptverzeichnis des Projekts (wo sich die `Dockerfile` befindet) folgenden Befehl aus:
+    ```bash
+    docker build -t solana-steuer-tool-rpi .
+    ```
+    Dieser Prozess kann auf einem Raspberry Pi einige Zeit in Anspruch nehmen, da möglicherweise einige Python-Pakete und Rust-Abhängigkeiten (für `solders`) kompiliert werden müssen.
+
+    Wenn Sie von einem anderen Rechner (z.B. x86_64) für eine Raspberry Pi bauen möchten (Cross-Compilation), können Sie `buildx` verwenden:
+    ```bash
+    # Sicherstellen, dass buildx eingerichtet ist (oft standardmäßig bei neueren Docker-Versionen)
+    # docker buildx create --use
+
+    # Beispiel für arm64 (z.B. Raspberry Pi 3/4/5 im 64-Bit-Modus)
+    docker buildx build --platform linux/arm64/v8 -t yourusername/solana-steuer-tool-rpi --load .
+    # Oder für armv7 (z.B. Raspberry Pi 2/3 im 32-Bit-Modus)
+    # docker buildx build --platform linux/arm/v7 -t yourusername/solana-steuer-tool-rpi --load .
+
+    # Wenn Sie das Image direkt in eine Registry pushen wollen (z.B. Docker Hub):
+    # docker buildx build --platform linux/arm64/v8 -t yourusername/solana-steuer-tool-rpi --push .
+    ```
+    Das `--load` Argument lädt das gebaute Image in die lokale Docker-Instanz. Das `--push` Argument lädt es in eine Registry hoch.
+
+### Ausführen des Containers
+
+Nachdem das Image erfolgreich gebaut wurde (entweder direkt auf dem Pi oder per Pull von einer Registry), können Sie den Container starten. Passen Sie die Umgebungsvariablen an Ihre Datenbankkonfiguration und andere Einstellungen an:
+
+```bash
+docker run -d \
+  -p 8000:8000 \
+  --name solana-steuer-tool-app \
+  -e DJANGO_SECRET_KEY='IhrSehrGeheimerSchluesselHier' \
+  -e DJANGO_DEBUG='False' \
+  -e DJANGO_ALLOWED_HOSTS='localhost,127.0.0.1,IHRE_PI_IP_ADRESSE' \
+  -e DB_ENGINE='django.db.backends.mysql' \ # oder 'django.db.backends.postgresql'
+  -e DB_NAME='IhreDatenbank' \
+  -e DB_USER='IhrDbBenutzer' \
+  -e DB_PASSWORD='IhrDbPasswort' \
+  -e DB_HOST='IP_IHRES_DB_SERVERS' \ # z.B. die IP des Pi, falls DB lokal läuft, oder externe IP
+  -e DB_PORT='3306' \ # oder '5432' für PostgreSQL
+  solana-steuer-tool-rpi # Oder der Name Ihres Images, z.B. yourusername/solana-steuer-tool-rpi
+```
+
+**Hinweise zu Umgebungsvariablen für Raspberry Pi:**
+*   `DJANGO_ALLOWED_HOSTS`: Fügen Sie die IP-Adresse Ihrer Raspberry Pi hinzu, damit Sie von anderen Geräten im Netzwerk darauf zugreifen können.
+*   `DB_HOST`: Wenn die Datenbank auf derselben Raspberry Pi läuft (nicht im Docker-Container, sondern als Dienst auf dem Host-System), können Sie versuchen, die Docker-Host-IP (oft `172.17.0.1` auf Linux, wenn das Standard-Bridge-Netzwerk verwendet wird) oder die LAN-IP der Raspberry Pi zu verwenden. Wenn die Datenbank in einem anderen Docker-Container läuft, verwenden Sie den Namen dieses Containers als Host, vorausgesetzt, beide sind im selben Docker-Netzwerk.
+
+### Wichtige Anpassungen in der Dockerfile für ARM
+
+Die `Dockerfile` enthält spezifische Anpassungen, um die Kompatibilität mit ARM-Architekturen zu verbessern:
+*   **Systemabhängigkeiten:** Installation von `default-libmysqlclient-dev` (für MySQL/MariaDB), `libpq-dev` (für PostgreSQL-Fallback-Kompilierung), `brotli`, `ca-certificates`, `gnupg` und `pkg-config`.
+*   **Rust-Toolchain:** Installation von `rustc` und `cargo` über `rustup.rs`. Dies ist entscheidend für die Kompilierung der `solders`-Bibliothek (eine Abhängigkeit von `solana-py`) und potenziell anderer Pakete mit Rust-Code, falls keine passenden vorkompilierten Wheels für die ARM-Architektur verfügbar sind.
+*   Das Basis-Image `python:3.10-slim-bullseye` ist multi-arch und unterstützt gängige ARM-Versionen.
+
+Diese Anpassungen stellen sicher, dass die notwendigen Werkzeuge und Bibliotheken während des Docker-Build-Prozesses auf einer ARM-Plattform vorhanden sind.

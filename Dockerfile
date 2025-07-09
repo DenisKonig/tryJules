@@ -12,16 +12,31 @@ ENV PIP_DEFAULT_TIMEOUT 100
 # - gcc und libmariadb-dev (oder default-libmysqlclient-dev) für mysqlclient
 # - brotli für whitenoise[brotli]
 # - curl und andere Werkzeuge können für Healthchecks oder Debugging nützlich sein
+# - libpq-dev für psycopg2 (falls Kompilierung aus Quellen nötig wird, z.B. für armv7l)
+# - rustc und cargo für Pakete mit Rust-Abhängigkeiten (z.B. solders, brotli Python-Paket)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    libmariadb-dev \
-    # default-libmysqlclient-dev \ # Alternative zu libmariadb-dev, je nach Verfügbarkeit/Präferenz
-    brotli \
-    # Optional: curl für Healthchecks
+    default-libmysqlclient-dev \ # Bevorzugt für breitere Kompatibilität
+    libpq-dev \ # Für psycopg2 Fallback-Kompilierung
+    brotli \ # Stellt libbrotli bereit, whitenoise[brotli] könnte dies verwenden oder sein eigenes kompilieren
     curl \
-    # Aufräumen, um Image-Größe zu reduzieren
-    && apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false \
+    # Rust-Toolchain für solders und ggf. andere Pakete
+    ca-certificates \ # Erforderlich für den Rust-Installations-Skript-Download
+    gnupg \ # Erforderlich für das Rust-Installations-Skript
+    # Ende Rust-Toolchain Vorbereitung
+    # Aufräumen, um Image-Größe zu reduzieren (wird später separat gemacht nach Rust-Installation)
     && rm -rf /var/lib/apt/lists/*
+
+# Rust installieren (wird für solders und ggf. brotli benötigt, falls keine Wheels passen)
+# Die Installation von Rust bläht das Image auf. Wenn möglich, in einem Multi-Stage-Build nur für die Build-Phase verwenden.
+# Für dieses Beispiel wird es direkt installiert.
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain stable -y \
+    && apt-get update && apt-get install -y --no-install-recommends pkg-config \ # pkg-config wird oft von Rust-Builds benötigt
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* # Aufräumen nach Rust und pkg-config
 
 # Arbeitsverzeichnis erstellen und setzen
 WORKDIR /app
@@ -29,6 +44,7 @@ WORKDIR /app
 # Python-Abhängigkeiten installieren
 # Zuerst nur requirements.txt kopieren, um den Docker-Cache zu nutzen,
 # wenn sich nur der Code, aber nicht die Abhängigkeiten ändern.
+# Wir installieren Abhängigkeiten NACHDEM Rust eingerichtet ist.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
